@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using ScoutMonitor.Application.Configuration;
 using ScoutMonitor.Domain.Interfaces;
 using ScoutMonitor.Domain.Models;
 
@@ -9,23 +10,21 @@ namespace ScoutMonitor.Infrastructure.Plugins;
 public class ApiPublisherPlugin : IMonitorPlugin
 {
     private readonly HttpClient _httpClient;
-    private readonly IConfiguration _configuration;
+    private readonly ApiSettings _settings;
 
-    public ApiPublisherPlugin(HttpClient httpClient, IConfiguration configuration)
+    public ApiPublisherPlugin(HttpClient httpClient, IOptions<ApiSettings> settings)
     {
         _httpClient = httpClient;
-        _configuration = configuration;
+        _settings = settings.Value;
     }
 
     public async Task ProcessAsync(SystemMetrics metrics)
     {
-        string endpoint = _configuration["Api:Endpoint"]!;
-
         var payload = new
         {
             cpu = metrics.CpuUsagePercent,
             ram_used = metrics.RamUsedMb,
-            disk_used = metrics.DiskUsedGb
+            disk_used = metrics.DiskUsedGb * 1024
         };
 
         var json = JsonSerializer.Serialize(payload);
@@ -35,7 +34,11 @@ public class ApiPublisherPlugin : IMonitorPlugin
             Encoding.UTF8,
             "application/json");
 
-        var response = await _httpClient.PostAsync(endpoint, content);
+        using var response =
+                    await _httpClient.PostAsync(
+                        _settings.Endpoint,
+                        content);        
+
         response.EnsureSuccessStatusCode();
     }
 }
