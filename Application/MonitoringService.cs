@@ -23,15 +23,12 @@ public class MonitoringService
     public async Task RunAsync()
     {
         int intervalSeconds = _configuration.GetValue<int>("Monitoring:IntervalSeconds");
-
         while (true)
         {
             try
             {
                 var metrics = await _systemMonitor.GetMetricsAsync();
-
                 PrintMetrics(metrics);
-
                 foreach (var plugin in _plugins)
                 {
                     try
@@ -48,7 +45,6 @@ public class MonitoringService
             {
                 Console.WriteLine($"Monitoring error: {ex.Message}");
             }
-
             await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
     }
