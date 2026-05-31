@@ -11,6 +11,10 @@ The application monitors:
 
 and supports a plugin architecture for extending behavior without modifying core logic.
 
+The solution uses a simplified Clean Architecture approach to separate monitoring logic, application orchestration, and infrastructure concerns. Platform-specific monitoring is isolated behind the ISystemMonitor interface, allowing future Linux and macOS implementations to be added without modifying application logic. Dependency Injection is used throughout the application to improve extensibility and testability.
+
+A plugin-based architecture was implemented using the IMonitorPlugin interface. This allows new integrations such as Slack notifications, email alerts, or database persistence to be added without changing the monitoring service. Two sample plugins were provided: a file logger plugin and a REST API publisher plugin.
+
 ## Architecture
 
 The solution follows a simplified Clean Architecture approach:
