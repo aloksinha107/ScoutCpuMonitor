@@ -2,77 +2,239 @@
 
 ## Overview
 
-Cross-platform-ready system monitoring console application built with .NET 8.
+Scout Monitor is a .NET 8 console application that monitors system resources and publishes monitoring updates through a plugin-based architecture.
 
-The application monitors:
-- CPU usage
-- RAM usage
-- Disk usage
+The application periodically collects:
 
-and supports a plugin architecture for extending behavior without modifying core logic.
+- CPU Usage (%)
+- RAM Usage (Used / Total)
+- Disk Usage (Used / Total)
 
-The solution uses a simplified Clean Architecture approach to separate monitoring logic, application orchestration, and infrastructure concerns. Platform-specific monitoring is isolated behind the ISystemMonitor interface, allowing future Linux and macOS implementations to be added without modifying application logic. Dependency Injection is used throughout the application to improve extensibility and testability.
+and then:
 
-A plugin-based architecture was implemented using the IMonitorPlugin interface. This allows new integrations such as Slack notifications, email alerts, or database persistence to be added without changing the monitoring service. Two sample plugins were provided: a file logger plugin and a REST API publisher plugin.
+- Displays the metrics in the console
+- Logs the metrics to a local file
+- Sends the metrics to a configurable REST API endpoint
+
+The solution is designed to be extensible through plugins and follows a simplified Clean Architecture approach with dependency injection.
+
+---
 
 ## Architecture
 
-The solution follows a simplified Clean Architecture approach:
+The project is organized into three logical layers:
 
-- Domain
-    - Models
-    - Interfaces
+### Domain
 
-- Application
-    - Monitoring orchestration
-    - Configuration
+Contains core models and contracts.
 
-- Infrastructure
-    - Windows monitoring implementation
-    - Plugins
+- `SystemMetrics`
+- `ISystemMonitor`
+- `IMonitorPlugin`
 
-## Plugins
+### Application
 
-Implemented plugins:
+Contains orchestration and configuration logic.
 
-- FileLoggerPlugin
-- ApiPublisherPlugin
+- `MonitoringService`
+- `MonitoringSettings`
+- `ApiSettings`
 
-## Platform Support
+### Infrastructure
 
-The monitoring functionality is abstracted through `ISystemMonitor`.
+Contains platform-specific and external integrations.
 
-This submission includes a Windows-specific implementation (`WindowsSystemMonitor`) using:
+- `WindowsSystemMonitor`
+- `FileLoggerPlugin`
+- `ApiPublisherPlugin`
 
-- PerformanceCounter
-- WMI (System.Management)
-- DriveInfo
+---
 
-Linux and macOS implementations can be added by implementing `ISystemMonitor`.
+## Design Approach
 
-## Running
+The primary design goal was separation of concerns and extensibility.
 
-dotnet restore
+### Monitoring Abstraction
 
-dotnet build
+System metric collection is abstracted behind the `ISystemMonitor` interface.
 
-dotnet run
+This allows additional implementations such as:
+
+- LinuxSystemMonitor
+- MacSystemMonitor
+
+to be added without modifying application logic.
+
+### Plugin Architecture
+
+Plugins implement the `IMonitorPlugin` interface.
+
+The monitoring service is unaware of specific plugin implementations and simply executes all registered plugins for each monitoring cycle.
+
+This follows the Open/Closed Principle by allowing new functionality to be added without modifying existing monitoring logic.
+
+### Dependency Injection
+
+Dependency Injection is used throughout the application to:
+
+- Decouple components
+- Improve maintainability
+- Simplify future testing
+- Support plugin extensibility
+
+---
+
+## Implemented Plugins
+
+### FileLoggerPlugin
+
+Writes monitoring information to a local file:
+
+```text
+metrics.log
+```
+
+### ApiPublisherPlugin
+
+Posts monitoring data to a configurable REST endpoint.
+
+Example payload:
+
+```json
+{
+  "cpu": 12.5,
+  "ram_used": 8123.4,
+  "disk_used": 215347.0
+}
+```
+
+---
+
+## Assumptions
+
+The following assumptions were made while implementing the solution:
+
+- Full monitoring support was implemented for Windows only.
+- Cross-platform support is achieved through abstraction (`ISystemMonitor`) rather than implementing all platform-specific monitors.
+- The application monitors the first available fixed disk drive on the system.
+
+---
 
 ## Configuration
 
 Configuration is stored in:
 
+```text
 appsettings.json
+```
 
-Settings:
+Example:
 
-- Monitoring interval
-- API endpoint
+```json
+{
+  "Monitoring": {
+    "IntervalSeconds": 5
+  },
+  "Api": {
+    "Endpoint": "https://httpbin.org/post"
+  }
+}
+```
+
+### Available Settings
+
+| Setting | Description |
+|----------|-------------|
+| IntervalSeconds | Monitoring interval in seconds |
+| Endpoint | REST API endpoint used by ApiPublisherPlugin |
+
+---
+
+## Prerequisites
+
+- .NET 8 SDK
+- Windows Operating System
+
+Verify installation:
+
+```bash
+dotnet --version
+```
+
+---
+
+## How To Build
+
+Restore dependencies:
+
+```bash
+dotnet restore
+```
+
+Build the application:
+
+```bash
+dotnet build
+```
+
+---
+
+## How To Run
+
+Run the application:
+
+```bash
+dotnet run
+```
+
+The application will begin displaying monitoring information every configured interval.
+
+Press:
+
+```text
+Ctrl + C
+```
+
+to stop the application gracefully.
+
+---
+
+## Output Examples
+
+### Console Output
+
+```text
+========================================
+Timestamp : 2026-05-31 10:00:00
+CPU       : 12.50%
+RAM       : 8123.44 MB / 16384.00 MB
+DISK      : 215.20 GB / 476.94 GB
+========================================
+```
+
+### File Output
+
+```text
+[2026-05-31 10:00:00] CPU=12.50% RAM=8123.44/16384.00 MB DISK=215.20/476.94 GB
+```
+
+---
 
 ## Future Improvements
 
-- Dynamic plugin discovery
-- Linux monitoring support
-- macOS monitoring support
-- Additional metrics
-- Dashboard UI
+Potential enhancements include:
+
+- Dynamic plugin discovery and loading
+- Linux monitoring implementation
+- macOS monitoring implementation
+- Additional system metrics (network, processes, etc.)
+- Dashboard or UI layer
+- Retry and resiliency policies for API communication
+
+---
+
+## Challenges Encountered
+
+The primary challenge was implementing platform-specific monitoring while keeping the application architecture platform-independent.
+
+This was addressed by isolating operating-system-specific logic behind the `ISystemMonitor` abstraction, allowing additional platform implementations to be introduced without modifying application-level code.
